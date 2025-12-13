@@ -526,16 +526,23 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _loading = true);
 
     try {
-      final success = await _authService.signup(username, email, password);
+      final result = await _authService.signup(username, email, password);
       if (!mounted) return;
-      if (success) {
-        _showSnackBar("Signup successful — please sign in.", background: Colors.green);
-        Navigator.pop(context);
+      
+      if (result['success']) {
+        // Navigate to email verification screen
+        Navigator.pushReplacementNamed(
+          context,
+          '/email-verification',
+          arguments: result['email'] ?? email,
+        );
       } else {
-        _showSnackBar("Signup failed. Try a different email or check your connection.");
+        _showSnackBar(result['message'] ?? "Signup failed. Try a different email or check your connection.");
       }
     } catch (e) {
-      _showSnackBar("Signup error: ${e.toString()}");
+      if (mounted) {
+        _showSnackBar("Signup error: ${e.toString()}");
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }

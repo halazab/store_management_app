@@ -504,7 +504,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       _error = null;
     });
 
-    final user = await _authService.login(
+    final result = await _authService.login(
       _emailController.text.trim(),
       _passwordController.text.trim(),
     );
@@ -513,13 +513,32 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
     if (!mounted) return;
 
-    if (user != null) {
-      Navigator.pushReplacementNamed(context, '/subscription');
-    } else {
+    if (result['success'] == true) {
+      // Login successful
+      final hasSub = await _authService.hasActiveSubscription();
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, hasSub ? '/home' : '/subscription');
+      }
+    } else if (result['email_not_verified'] == true) {
+      // Email not verified - redirect to verification screen
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid username or password')),
+        SnackBar(
+          content: Text(result['message'] ?? 'Please verify your email'),
+          backgroundColor: Colors.orange,
+        ),
       );
-      setState(() => _error = "Invalid username or password");
+      Navigator.pushReplacementNamed(
+        context,
+        '/email-verification',
+        arguments: result['email'],
+      );
+    } else {
+      // Login failed
+      final errorMsg = result['message'] ?? 'Invalid username or password';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMsg)),
+      );
+      setState(() => _error = errorMsg);
     }
   }
 

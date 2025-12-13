@@ -165,14 +165,87 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/user.dart';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AuthService {
   final String baseUrl = "http://127.0.0.1:8000/api";
 
-  /// Get stored access token
+  /// Get stored access token with automatic refresh if expired
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString("access");
+    final accessToken = prefs.getString("access");
+    
+    if (accessToken == null) return null;
+    
+    // Check if token is expired and refresh if needed
+    if (await _isTokenExpired(accessToken)) {
+      print('Token expired, attempting refresh...');
+      final refreshed = await refreshToken();
+      if (refreshed) {
+        return prefs.getString("access");
+      }
+      return null; // Refresh failed
+    }
+    
+    return accessToken;
+  }
+  
+  /// Check if JWT token is expired
+  Future<bool> _isTokenExpired(String token) async {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return true;
+      
+      final payload = parts[1];
+      final normalized = base64Url.normalize(payload);
+      final decoded = utf8.decode(base64Url.decode(normalized));
+      final Map<String, dynamic> data = json.decode(decoded);
+      
+      final exp = data['exp'];
+      if (exp == null) return true;
+      
+      final expiryDate = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+      final now = DateTime.now();
+      
+      // Consider token expired if it expires in less than 5 minutes
+      return expiryDate.isBefore(now.add(const Duration(minutes: 5)));
+    } catch (e) {
+      print('Error checking token expiry: $e');
+      return true;
+    }
+  }
+  
+  /// Refresh access token using refresh token
+  Future<bool> refreshToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final refreshToken = prefs.getString("refresh");
+      
+      if (refreshToken == null) {
+        print('No refresh token available');
+        return false;
+      }
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl/token/refresh/'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'refresh': refreshToken}),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        await prefs.setString('access', data['access']);
+        print('✅ Token refreshed successfully');
+        return true;
+      } else {
+        print('❌ Token refresh failed: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      print('❌ Token refresh error: $e');
+      return false;
+    }
   }
 
   Future<bool> isLoggedIn() async {
@@ -181,8 +254,41 @@ class AuthService {
   }
 
   Future<bool> hasActiveSubscription() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('active_subscription') ?? false;
+    // Check with backend and update local prefs
+    return await checkSubscription();
+  }
+
+  /// Get subscription pricing options from backend
+  Future<List<Map<String, dynamic>>> getSubscriptionPricing() async {
+    try {
+      final response = await http.get(
+        Uri.parse("$baseUrl/subscription-pricing/"),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((item) => {
+          'id': item['id'],
+          'name': item['name'],
+          'price': (item['amount'] as num).toInt(),
+          'description': item['description'] ?? '',
+          'display_order': item['display_order'] ?? 0,
+        }).toList();
+      }
+    } catch (e) {
+      print("Error fetching subscription pricing: $e");
+    }
+    
+    // Return default pricing if API fails
+    return [
+      {
+        'id': 1,
+        'name': 'Lifetime Access',
+        'price': 5000,
+        'description': 'One-time payment for lifetime access',
+        'display_order': 0,
+      }
+    ];
   }
 
   /// Check if user has active subscription
@@ -197,7 +303,10 @@ class AuthService {
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      return data["is_paid"] ?? false;
+      final isPaid = data["is_paid"] ?? false;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('active_subscription', isPaid);
+      return isPaid;
     }
     return false;
   }
@@ -206,6 +315,8 @@ class AuthService {
     required int amount,
     required String email,
     required String txRef,
+    String? couponCode,
+    String? frontendUrl,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString("access");
@@ -215,17 +326,27 @@ class AuthService {
       return null;
     }
 
+    final body = {
+      "amount": amount.toString(),
+      "email": email,
+      "tx_ref": txRef,
+    };
+    
+    if (couponCode != null && couponCode.isNotEmpty) {
+      body["coupon_code"] = couponCode;
+    }
+
+    if (frontendUrl != null) {
+      body["frontend_url"] = frontendUrl;
+    }
+
     final response = await http.post(
       Uri.parse("$baseUrl/start-payment/"),
       headers: {
         "Content-Type": "application/json",
         "Authorization": "Bearer $token",
       },
-      body: json.encode({
-        "amount": amount.toString(),
-        "email": email,
-        "tx_ref": txRef,
-      }),
+      body: json.encode(body),
     );
 
     print("🧾 Payment Response Code: ${response.statusCode}");
@@ -237,6 +358,26 @@ class AuthService {
     } else {
       print("❌ Payment creation failed: ${response.body}");
       return null;
+    }
+  }
+
+  Future<Map<String, dynamic>> validateCoupon(String couponCode, int amount) async {
+    final response = await http.post(
+      Uri.parse("$baseUrl/validate-coupon/"),
+      headers: {"Content-Type": "application/json"},
+      body: json.encode({
+        "coupon_code": couponCode,
+        "amount": amount,
+      }),
+    );
+
+    print("Coupon Validation Response: ${response.statusCode}");
+    print("Coupon Validation Body: ${response.body}");
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      return {"valid": false, "error": "Failed to validate coupon"};
     }
   }
 
@@ -287,14 +428,14 @@ class AuthService {
     await prefs.remove("pending_tx_ref");
   }
 
-  Future<bool> signup(String username, String email, String password) async {
+  Future<Map<String, dynamic>> signup(String username, String email, String password) async {
     final response = await http.post(
       Uri.parse("$baseUrl/signup/"),
       headers: {"Content-Type": "application/json"},
       body: json.encode({
         "username": username,
         "email": email,
-        "password": password, // ✅ use "password", not password1/password2
+        "password": password,
       }),
     );
 
@@ -302,18 +443,60 @@ class AuthService {
     print("Signup Response Body: ${response.body}");
 
     if (response.statusCode == 201) {
-      return true; // success
+      final data = json.decode(response.body);
+      return {
+        'success': true,
+        'message': data['message'] ?? 'Signup successful',
+        'email': data['email'] ?? email,
+      };
     } else {
-      return false; // failed
+      final error = json.decode(response.body);
+      return {
+        'success': false,
+        'message': error['error'] ?? 'Signup failed',
+      };
     }
   }
 
-  Future<User?> login(String identifier, String password) async {
+  /// Verify email with OTP code
+  Future<bool> verifyEmail(String email, String otp) async {
+    final response = await http.post(
+      Uri.parse("$baseUrl/verify-email/"),
+      headers: {"Content-Type": "application/json"},
+      body: json.encode({
+        "email": email,
+        "otp": otp,
+      }),
+    );
+
+    print("Verify Email Response Code: ${response.statusCode}");
+    print("Verify Email Response Body: ${response.body}");
+
+    return response.statusCode == 200;
+  }
+
+  /// Resend verification code
+  Future<bool> resendVerificationCode(String email) async {
+    final response = await http.post(
+      Uri.parse("$baseUrl/resend-verification-code/"),
+      headers: {"Content-Type": "application/json"},
+      body: json.encode({
+        "email": email,
+      }),
+    );
+
+    print("Resend Code Response Code: ${response.statusCode}");
+    print("Resend Code Response Body: ${response.body}");
+
+    return response.statusCode == 200;
+  }
+
+  Future<Map<String, dynamic>> login(String identifier, String password) async {
     final isEmail = RegExp(r"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$").hasMatch(identifier);
 
     final Map<String, String> body = {
       "password": password,
-      if (isEmail) "email": identifier else "username": identifier,
+      "identifier": identifier,  // Send as identifier, backend will handle it
     };
 
     final response = await http.post(
@@ -333,40 +516,47 @@ class AuthService {
       await prefs.setString("access", data["access"] ?? "");
       await prefs.setString("refresh", data["refresh"] ?? "");
 
-      // Always save identifier info
+      // Save user info
+      final userInfo = data["user"];
+      await prefs.setString("user_email", userInfo["email"] ?? "");
+      await prefs.setString("user_username", userInfo["username"] ?? "");
       await prefs.setString("user_identifier", identifier);
       await prefs.setBool("is_email", isEmail);
 
-      // Fetch full user info if email missing
-      String userEmail;
-      String userUsername;
+      print("✅ Saved email: ${userInfo["email"]}");
+      print("✅ Saved username: ${userInfo["username"]}");
 
-      if (isEmail) {
-        userEmail = identifier;
-        userUsername = data["username"] ?? "";
-      } else {
-        userUsername = identifier;
-        // Try to get email from backend via /me/ endpoint
-        final email = await fetchUserEmail(data["access"]);
-        userEmail = email ?? "no-email@domain.com"; // fallback if still null
+      return {
+        'success': true,
+        'user': User(
+          id: userInfo["id"]?.toString() ?? "",
+          email: userInfo["email"] ?? "",
+          username: userInfo["username"] ?? "",
+          token: data["access"] ?? "",
+        )
+      };
+    } else if (response.statusCode == 403) {
+      // Email not verified
+      final data = jsonDecode(response.body);
+      if (data["email_not_verified"] == true) {
+        return {
+          'success': false,
+          'email_not_verified': true,
+          'email': data["email"],
+          'message': data["message"] ?? "Please verify your email before logging in"
+        };
       }
-
-      await prefs.setString("user_email", userEmail);
-      await prefs.setString("user_username", userUsername);
-
-      print("✅ Saved email: $userEmail");
-      print("✅ Saved username: $userUsername");
-
-      return User(
-        id: data["id"]?.toString() ?? "",
-        email: userEmail,
-        username: userUsername,
-        token: data["access"] ?? "",
-      );
+      return {
+        'success': false,
+        'message': data["message"] ?? "Login failed"
+      };
     } else {
       final error = jsonDecode(response.body);
-      print("❌ Login failed: ${error["detail"] ?? response.body}");
-      return null;
+      print("❌ Login failed: ${error["error"] ?? response.body}");
+      return {
+        'success': false,
+        'message': error["error"] ?? error["message"] ?? "Invalid credentials"
+      };
     }
   }
 
@@ -415,5 +605,116 @@ class AuthService {
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
+  }
+
+  // ==================== Computer Sales CRUD ====================
+  
+  /// Get all computer sales
+  Future<List<Map<String, dynamic>>> getComputerSales() async {
+    final token = await getToken();
+    if (token == null) return [];
+
+    try {
+      final response = await http.get(
+        Uri.parse("$baseUrl/computer-sales/"),
+        headers: {"Authorization": "Bearer $token"},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      }
+    } catch (e) {
+      print("Error fetching computer sales: $e");
+    }
+    return [];
+  }
+
+  /// Create new computer sale
+  Future<bool> createComputerSale({
+    required String model,
+    required String specs,
+    required double price,
+    required int quantity,
+    required String status,
+  }) async {
+    final token = await getToken();
+    if (token == null) return false;
+
+    try {
+      final response = await http.post(
+        Uri.parse("$baseUrl/computer-sales/"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
+        body: json.encode({
+          "model": model,
+          "specs": specs,
+          "price": price,
+          "quantity": quantity,
+          // Ensure status matches backend choice formatting (capitalize)
+          "status": status.isNotEmpty ? (status[0].toUpperCase() + status.substring(1)) : status,
+        }),
+      );
+
+      return response.statusCode == 201;
+    } catch (e) {
+      print("Error creating computer sale: $e");
+      return false;
+    }
+  }
+
+  /// Update computer sale
+  Future<bool> updateComputerSale({
+    required int id,
+    required String model,
+    required String specs,
+    required double price,
+    required int quantity,
+    required String status,
+  }) async {
+    final token = await getToken();
+    if (token == null) return false;
+
+    try {
+      final response = await http.put(
+        Uri.parse("$baseUrl/computer-sales/$id/"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
+        body: json.encode({
+          "model": model,
+          "specs": specs,
+          "price": price,
+          "quantity": quantity,
+          "status": status.isNotEmpty ? (status[0].toUpperCase() + status.substring(1)) : status,
+        }),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error updating computer sale: $e");
+      return false;
+    }
+  }
+
+  /// Delete computer sale
+  Future<bool> deleteComputerSale(int id) async {
+    final token = await getToken();
+    if (token == null) return false;
+
+    try {
+      final response = await http.delete(
+        Uri.parse("$baseUrl/computer-sales/$id/"),
+        headers: {"Authorization": "Bearer $token"},
+      );
+
+      return response.statusCode == 204;
+    } catch (e) {
+      print("Error deleting computer sale: $e");
+      return false;
+    }
   }
 }

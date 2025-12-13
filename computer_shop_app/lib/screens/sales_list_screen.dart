@@ -1,505 +1,312 @@
-// import 'package:flutter/material.dart';
-// import 'package:computer_shop_app/models/computer_sale.dart';
-// import 'package:computer_shop_app/services/api_service.dart';
-// import 'package:computer_shop_app/widgets/sale_status_chip.dart';
-// import 'package:computer_shop_app/screens/sale_detail_screen.dart';
-// import 'package:computer_shop_app/screens/add_computer_sale_screen.dart';
-// import 'package:intl/intl.dart';
-
-// class SalesListScreen extends StatefulWidget {
-//   const SalesListScreen({super.key});
-
-//   @override
-//   State<SalesListScreen> createState() => _SalesListScreenState();
-// }
-
-// class _SalesListScreenState extends State<SalesListScreen> {
-//   late Future<List<ComputerSale>> _salesFuture;
-//   final ApiService _apiService = ApiService();
-
-//   final _currencyFormatter = NumberFormat.currency(
-//     locale: 'en_ET',
-//     symbol: 'ETB ',
-//     decimalDigits: 2,
-//   );
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     _fetchSales();
-//   }
-
-//   void _fetchSales() {
-//     setState(() {
-//       _salesFuture = _apiService.getComputerSales();
-//     });
-//   }
-
-//   void _navigateToSaleDetail(ComputerSale sale) async {
-//     final bool? shouldRefresh = await Navigator.of(context).push(
-//       MaterialPageRoute(
-//         builder: (context) => SaleDetailScreen(sale: sale),
-//       ),
-//     );
-
-//     if (shouldRefresh == true) {
-//       _fetchSales();
-//     }
-//   }
-
-//   void _navigateToAddComputerSaleScreen() async {
-//     final bool? saleAdded = await Navigator.push(
-//       context,
-//       MaterialPageRoute(
-//         builder: (context) => const AddComputerSaleScreen(),
-//       ),
-//     );
-
-//     if (saleAdded == true) {
-//       _fetchSales();
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         const SnackBar(content: Text('New computer added for sale!')),
-//       );
-//     }
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: Colors.white, // ✅ White background
-//       appBar: AppBar(
-//         backgroundColor: const Color(0xFF007BFF), // ✅ Blue AppBar
-//         title: const Text('Available Computers for Sale', style: TextStyle(color: Colors.white)),
-//         iconTheme: const IconThemeData(color: Colors.white),
-//       ),
-//       body: FutureBuilder<List<ComputerSale>>(
-//         future: _salesFuture,
-//         builder: (context, snapshot) {
-//           if (snapshot.connectionState == ConnectionState.waiting) {
-//             return const Center(child: CircularProgressIndicator());
-//           } else if (snapshot.hasError) {
-//             return Center(
-//               child: Column(
-//                 mainAxisAlignment: MainAxisAlignment.center,
-//                 children: [
-//                   Text('Error: ${snapshot.error}'),
-//                   const SizedBox(height: 8),
-//                   ElevatedButton(
-//                     style: ElevatedButton.styleFrom(
-//                       backgroundColor: const Color(0xFF007BFF), // ✅ Blue button
-//                     ),
-//                     onPressed: _fetchSales,
-//                     child: const Text('Retry', style: TextStyle(color: Colors.white)),
-//                   ),
-//                 ],
-//               ),
-//             );
-//           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-//             return const Center(child: Text('No computers for sale found.'));
-//           } else {
-//             return RefreshIndicator(
-//               onRefresh: () async => _fetchSales(),
-//               color: const Color(0xFF007BFF), // ✅ Blue refresh loader
-//               child: ListView.builder(
-//                 itemCount: snapshot.data!.length,
-//                 itemBuilder: (context, index) =>
-//                     _buildSaleCard(snapshot.data![index]),
-//               ),
-//             );
-//           }
-//         },
-//       ),
-//       floatingActionButton: FloatingActionButton(
-//         backgroundColor: const Color(0xFF007BFF), // ✅ Blue FAB
-//         onPressed: _navigateToAddComputerSaleScreen,
-//         child: const Icon(Icons.add, color: Colors.white),
-//       ),
-//     );
-//   }
-
-//   Widget _buildSaleCard(ComputerSale sale) {
-//     return Card(
-//       color: Colors.white, // ✅ White card
-//       shadowColor: Colors.grey.withOpacity(0.2),
-//       elevation: 3,
-//       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-//       margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-//       child: ListTile(
-//         title: Text(sale.model, style: const TextStyle(fontWeight: FontWeight.w600)),
-//         subtitle: Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             Text('Specs: ${sale.specs}'),
-//             Text('Price: ${_currencyFormatter.format(sale.price)}'),
-//             SaleStatusChip(status: sale.status), // ✅ Keeps original chip colors
-//           ],
-//         ),
-//         trailing: const Icon(Icons.arrow_forward_ios, color: Color(0xFF007BFF)), // ✅ Blue arrow
-//         onTap: () => _navigateToSaleDetail(sale),
-//       ),
-//     );
-//   }
-// }
-
-
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:computer_shop_app/services/auth_service.dart';
+import 'package:computer_shop_app/screens/add_computer_screen.dart';
+import 'package:computer_shop_app/screens/sold_items_screen.dart';
+import 'package:computer_shop_app/screens/computer_detail_screen.dart';
 
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class SalesListScreen extends StatefulWidget {
+  const SalesListScreen({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Sales Management',
-      theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-        // fontFamily: 'Poppins', // You might need to add a custom font
-      ),
-      home: const SalesManagementScreen(),
-    );
+  State<SalesListScreen> createState() => _SalesListScreenState();
+}
+
+class _SalesListScreenState extends State<SalesListScreen> {
+  final AuthService _authService = AuthService();
+  late Future<List<Map<String, dynamic>>> _salesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshSales();
   }
-}
 
-class SalesManagementScreen extends StatefulWidget {
-  const SalesManagementScreen({super.key});
-
-  @override
-  State<SalesManagementScreen> createState() => _SalesManagementScreenState();
-}
-
-class _SalesManagementScreenState extends State<SalesManagementScreen> {
-  int _selectedIndex = 1; // 1 for 'Sales Management' which is 'My Order' equivalent
-
-  void _onItemTapped(int index) {
+  void _refreshSales() {
     setState(() {
-      _selectedIndex = index;
+      _salesFuture = _fetchSalesAndSoldItems();
     });
-    // In a real app, you would navigate to different screens here
-    if (index == 0) {
-      // Navigator.push(context, MaterialPageRoute(builder: (context) => HomeScreen()));
-    } else if (index == 1) {
-      // Navigator.push(context, MaterialPageRoute(builder: (context) => SalesManagementScreen()));
-    } else if (index == 2) {
-      // Navigator.push(context, MaterialPageRoute(builder: (context) => FavoriteScreen()));
-    } else if (index == 3) {
-      // Navigator.push(context, MaterialPageRoute(builder: (context) => MaintenanceHubScreen())); // Renamed from My Profile
+  }
+
+  /// Fetch available computer sales and sold-item snapshots and merge them
+  Future<List<Map<String, dynamic>>> _fetchSalesAndSoldItems() async {
+    final List<Map<String, dynamic>> combined = [];
+
+    try {
+      final sales = await _authService.getComputerSales();
+      combined.addAll(sales);
+    } catch (e) {
+      // ignore, will try to still fetch sold items
+      print('Error loading computer sales: $e');
+    }
+
+    try {
+      final token = await _authService.getToken();
+      if (token != null) {
+        final uri = Uri.parse('${_authService.baseUrl}/sold-items/');
+        final response = await http.get(uri, headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json'
+        });
+
+        if (response.statusCode == 200) {
+          final List<dynamic> soldData = json.decode(response.body);
+          // Convert sold item snapshots into the same shape used by the list
+          final soldAsComputers = soldData.map<Map<String, dynamic>>((item) {
+            return {
+              'id': item['id'],
+              'model': item['model'] ?? item['computer']?.toString() ?? 'Sold Item',
+              'specs': item['specs'] ?? '',
+              'price': item['sold_price'] ?? item['price'] ?? 0,
+              'quantity': 1,
+              'status': 'Sold',
+              'sold_at': item['sold_at'],
+              // mark it so detail screen can choose how to display
+              'is_sold_snapshot': true,
+            };
+          }).toList();
+
+          // Append sold items after current inventory
+          combined.addAll(soldAsComputers);
+        }
+      }
+    } catch (e) {
+      print('Error fetching sold items: $e');
+    }
+
+    return combined;
+  }
+
+  Future<void> _navigateToAddScreen() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AddComputerScreen()),
+    );
+
+    if (result == true) {
+      _refreshSales();
+    }
+  }
+
+  Future<void> _navigateToDetailScreen(Map<String, dynamic> computer) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ComputerDetailScreen(computer: computer),
+      ),
+    );
+
+    if (result == true) {
+      _refreshSales();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Set Scaffold background to white
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white, // Set AppBar background to white
+        title: const Text('Computers for Sale'),
+        backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
-          'Sales Management', // Changed title
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
-        centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.shopping_bag_outlined, color: Colors.grey),
+            icon: const Icon(Icons.list_alt, color: Colors.black),
+            tooltip: 'Sold items',
             onPressed: () {
-              // Handle shopping bag icon tap
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SoldItemsScreen()),
+              );
             },
           ),
         ],
+        titleTextStyle: const TextStyle(
+          color: Colors.black,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _navigateToAddScreen,
+        backgroundColor: const Color(0xFF003399),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text('Add Computer', style: TextStyle(color: Colors.white)),
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async => _refreshSales(),
+        child: FutureBuilder<List<Map<String, dynamic>>>(
+          future: _salesFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (snapshot.hasError) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            decoration: const BoxDecoration(
-                              border: Border(
-                                bottom: BorderSide(
-                                  color: Color(0xFF673AB7), // Purple underline
-                                  width: 2.5,
-                                ),
-                              ),
-                            ),
-                            child: const Text(
-                              'Computers for Sale', // Changed from My Order
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Error loading sales',
+                      style: TextStyle(color: Colors.grey[800], fontSize: 16),
                     ),
-                    // "History" tab removed
-                    // Expanded(
-                    //   child: Column(
-                    //     crossAxisAlignment: CrossAxisAlignment.end,
-                    //     children: [
-                    //       Container(
-                    //         padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    //         child: Text(
-                    //           'History',
-                    //           style: TextStyle(
-                    //             fontSize: 18,
-                    //             fontWeight: FontWeight.normal,
-                    //             color: Colors.grey[600],
-                    //           ),
-                    //         ),
-                    //       ),
-                    //     ],
-                    //   ),
-                    // ),
+                    TextButton(
+                      onPressed: _refreshSales,
+                      child: const Text('Retry'),
+                    ),
                   ],
                 ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              children: [
-                _buildComputerSaleCard(
-                  context,
-                  imageAsset: 'assets/computer1.png', // Placeholder image
-                  computerName: 'Gaming Desktop Z-Pro',
-                  entryDate: '2023-10-26',
-                  quantity: 1,
-                  status: 'Available',
-                  price: 1250.00,
+              );
+            }
+
+            final sales = snapshot.data ?? [];
+
+            if (sales.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey[400]),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No computers for sale yet',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 18),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Tap details to add your first computer',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                _buildComputerSaleCard(
-                  context,
-                  imageAsset: 'assets/computer2.png', // Placeholder image
-                  computerName: 'Laptop UltraBook X',
-                  entryDate: '2023-10-25',
-                  quantity: 1,
-                  status: 'Sold',
-                  price: 980.50,
-                ),
-                const SizedBox(height: 16),
-                _buildComputerSaleCard(
-                  context,
-                  imageAsset: 'assets/computer3.png', // Placeholder image
-                  computerName: 'Mini PC Home Edition',
-                  entryDate: '2023-10-20',
-                  quantity: 2,
-                  status: 'Available',
-                  price: 450.00,
-                ),
-                const SizedBox(height: 16),
-                _buildComputerSaleCard(
-                  context,
-                  imageAsset: 'assets/computer4.png', // Placeholder image
-                  computerName: 'Workstation Pro Max',
-                  entryDate: '2023-10-18',
-                  quantity: 1,
-                  status: 'Available',
-                  price: 2100.00,
-                ),
-              ],
-            ),
-          ),
-          // "Add" button at the bottom
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
-            child: SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  // Handle "Add" button press
-                  print('Add New Item button pressed!');
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF673AB7), // Purple
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 5,
-                ),
-                icon: const Icon(Icons.add, color: Colors.white, size: 28),
-                label: const Text(
-                  'Add New Item',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        selectedItemColor: const Color(0xFF673AB7), // Purple
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        backgroundColor: Colors.white,
-        type: BottomNavigationBarType.fixed,
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inventory_2_outlined), // Changed icon for Sales Management
-            label: 'Sales Management', // Changed label
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.favorite_border),
-            label: 'Favorite',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.build_circle_outlined), // Changed icon for Maintenance Hub
-            label: 'Maintenance Hub', // Changed label
-          ),
-        ],
+              );
+            }
+
+            return ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: sales.length,
+              itemBuilder: (context, index) {
+                final computer = sales[index];
+                return _buildComputerCard(computer);
+              },
+            );
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildComputerSaleCard(
-    BuildContext context, {
-    required String imageAsset,
-    required String computerName,
-    required String entryDate,
-    required int quantity,
-    required String status,
-    required double price,
-  }) {
-    Color statusColor = status == 'Available' ? Colors.green : Colors.red;
+  Widget _buildComputerCard(Map<String, dynamic> computer) {
+    final currencyFormat = NumberFormat.currency(symbol: 'ETB ', decimalDigits: 2);
+    // Ensure price is a numeric type before formatting (backend may send string)
+    final priceRaw = computer['price'];
+    final double priceValue = priceRaw is String
+        ? double.tryParse(priceRaw) ?? 0.0
+        : (priceRaw is num ? priceRaw.toDouble() : 0.0);
+
+    final status = computer['status'] ?? 'available';
+    final isAvailable = status.toLowerCase() == 'available';
 
     return Card(
-      elevation: 0,
-      margin: EdgeInsets.zero, // Remove default card margin
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white, // Card background white
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              spreadRadius: 2,
-              blurRadius: 5,
-              offset: const Offset(0, 3), // changes position of shadow
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Computer Image
-            Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(12),
-                image: DecorationImage(
-                  image: AssetImage(imageAsset), // Use AssetImage
-                  fit: BoxFit.cover,
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: () => _navigateToDetailScreen(computer),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.computer, size: 40, color: Color(0xFF003399)),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            computer['model'] ?? 'Unknown Model',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isAvailable ? Colors.green[50] : Colors.red[50],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isAvailable ? Colors.green : Colors.red,
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            status.toUpperCase(),
+                            style: TextStyle(
+                              color: isAvailable ? Colors.green[700] : Colors.red[700],
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      computer['specs'] ?? 'No specs',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          currencyFormat.format(priceValue),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF003399),
+                          ),
+                        ),
+                        Text(
+                          'Qty: ${computer['quantity'] ?? 0}',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded( // Added Expanded to ensure text doesn't overflow
-                        child: Text(
-                          computerName,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                          overflow: TextOverflow.ellipsis, // Handle long names
-                        ),
-                      ),
-                      const SizedBox(width: 8), // Spacing between name and status
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          status,
-                          style: TextStyle(
-                            color: statusColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Entry Date: $entryDate',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Qty: $quantity',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Align( // Align price to the left
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      '\$${price.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                  // "Detail" and "Tracking" buttons removed
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

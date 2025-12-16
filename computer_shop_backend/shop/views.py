@@ -903,6 +903,7 @@ def resend_verification_code(request):
     
     return JsonResponse({"message": "Verification code sent successfully. Please check your email."})
 
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_user_profile_data(request):
     """

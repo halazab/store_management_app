@@ -27,6 +27,12 @@ EMAIL_HOST_USER = 'storemanagingapp@gmail.com'
 EMAIL_HOST_PASSWORD = 'crcbtwlgxtvtavqa'           
 DEFAULT_FROM_EMAIL = 'Store Management <storemanagingapp@gmail.com>'
 
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "store_management_app.onrender.com"
+]
+
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:63469",
     "http://127.0.0.1:63469",
@@ -84,6 +90,7 @@ REST_FRAMEWORK = {
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -91,6 +98,11 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
@@ -127,12 +139,25 @@ WSGI_APPLICATION = 'computer_shop_backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+import os
+import dj_database_url
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY",
+    "django-insecure-xj951=^$9h5&obv-#1g7q#^1!4me5s1*g4hbvsy^ohd6)$nha8"
+)
+
+DEBUG = os.environ.get("DEBUG", "True") == "True"
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    "default": dj_database_url.config(
+        default="sqlite:///db.sqlite3"
+    )
 }
+
 
 
 # Password validation

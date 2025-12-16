@@ -23,6 +23,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import send_mail
 from django.core.mail import EmailMessage
 from django.utils.crypto import get_random_string
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import logout
 import random
 import json
 
@@ -900,3 +902,21 @@ def resend_verification_code(request):
     )
     
     return JsonResponse({"message": "Verification code sent successfully. Please check your email."})
+
+@permission_classes([IsAuthenticated])
+def get_user_profile_data(request):
+    """
+    Returns user data as JSON for the Flutter app
+    """
+    user = request.user
+    return Response({
+        "username": user.username,
+        "email": user.email,
+        "is_active": user.is_active,
+    })
+
+@csrf_exempt
+@api_view(['POST'])
+def api_logout(request):
+    logout(request)
+    return JsonResponse({"message": "Logged out successfully"})

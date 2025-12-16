@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:computer_shop_app/screens/maintenance_list_screen.dart';
 import 'package:computer_shop_app/screens/sales_list_screen.dart';
+import '../widgets/profile_header.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,6 +30,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_selectedIndex]),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0, top: 10.0),
+            child: ProfileHeader(),
+          ),
+        ],
       ),
       body: IndexedStack(
         index: _selectedIndex,

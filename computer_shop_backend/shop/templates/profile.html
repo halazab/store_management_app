@@ -1,0 +1,12 @@
+<div class="profile-container">
+    <div class="profile-trigger" onclick="toggleProfile()">
+        👤 {{ request.user.username }}
+    </div>
+
+    <div class="profile-dropdown" id="profileDropdown">
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit">Logout</button>
+        </form>
+    </div>
+</div>

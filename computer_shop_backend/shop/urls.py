@@ -20,6 +20,8 @@ from .views import (
     get_subscription_pricing,
     get_user_profile_data,
     api_logout,
+    send_to_maintenance,      
+    return_from_maintenance,
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 

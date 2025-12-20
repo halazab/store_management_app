@@ -91,11 +91,8 @@ REST_FRAMEWORK = {
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
-<<<<<<< HEAD
     "whitenoise.middleware.WhiteNoiseMiddleware",
-=======
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Add Whitenoise for static files
->>>>>>> 320e4ba341679e3df2e2a8e4f55fff8751b34f24
+    'whitenoise.middleware.WhiteNoiseMiddleware',  
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',

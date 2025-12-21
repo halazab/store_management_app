@@ -1,14 +1,19 @@
 services:
   - type: web
-    name: computer_shop_backend
+    name: computer-shop-backend
     env: python
+    region: oregon
     buildCommand: |
+      cd computer_shop_backend
       pip install -r requirements.txt
-      python manage.py collectstatic --noinput
-      python manage.py migrate
-    startCommand: gunicorn computer_shop_backend.wsgi:application
+      python manage.py migrate --noinput
+      python manage.py collectstatic --noinput --clear
+      python manage.py ensure_admin
+    startCommand: cd computer_shop_backend && gunicorn computer_shop_backend.wsgi:application
     envVars:
       - key: DEBUG
         value: False
       - key: SECRET_KEY
         generateValue: true
+      - key: PYTHON_VERSION
+        value: 3.12.0

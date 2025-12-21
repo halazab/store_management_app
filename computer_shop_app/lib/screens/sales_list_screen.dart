@@ -106,39 +106,51 @@ class _SalesListScreenState extends State<SalesListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('Computers for Sale'),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.list_alt, color: Colors.black),
-            tooltip: 'Sold items',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SoldItemsScreen()),
-              );
-            },
+      backgroundColor: const Color(0xFFF9FAFB),
+      body: Column(
+        children: [
+          // Header actions bar
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Computers for Sale',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1F2937),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.list_alt_rounded, color: Color(0xFF003399)),
+                  tooltip: 'Sold items',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SoldItemsScreen()),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
-        ],
-        titleTextStyle: const TextStyle(
-          color: Colors.black,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-        ),
-        iconTheme: const IconThemeData(color: Colors.black),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _navigateToAddScreen,
-        backgroundColor: const Color(0xFF003399),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Add Computer', style: TextStyle(color: Colors.white)),
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async => _refreshSales(),
-        child: FutureBuilder<List<Map<String, dynamic>>>(
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async => _refreshSales(),
+              color: const Color(0xFF003399),
+              child: FutureBuilder<List<Map<String, dynamic>>>(
           future: _salesFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -198,6 +210,14 @@ class _SalesListScreenState extends State<SalesListScreen> {
             );
           },
         ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _navigateToAddScreen,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add Computer'),
+        elevation: 4,
       ),
     );
   }
@@ -212,27 +232,73 @@ class _SalesListScreenState extends State<SalesListScreen> {
 
     final status = computer['status'] ?? 'available';
     final isAvailable = status.toLowerCase() == 'available';
+    final isSold = status.toLowerCase() == 'sold';
+    final isMaintenance = status.toLowerCase() == 'maintenance';
+
+    // Status color and gradient
+    Color statusColor;
+    List<Color> statusGradient;
+    IconData statusIcon;
+
+    if (isAvailable) {
+      statusColor = const Color(0xFF10B981);
+      statusGradient = [const Color(0xFF10B981), const Color(0xFF059669)];
+      statusIcon = Icons.check_circle;
+    } else if (isSold) {
+      statusColor = const Color(0xFFEF4444);
+      statusGradient = [const Color(0xFFEF4444), const Color(0xFFDC2626)];
+      statusIcon = Icons.shopping_bag;
+    } else if (isMaintenance) {
+      statusColor = const Color(0xFFF59E0B);
+      statusGradient = [const Color(0xFFF59E0B), const Color(0xFFD97706)];
+      statusIcon = Icons.build_circle;
+    } else {
+      statusColor = Colors.grey;
+      statusGradient = [Colors.grey, Colors.grey.shade700];
+      statusIcon = Icons.info;
+    }
 
     return Card(
-      elevation: 2,
+      elevation: 3,
       margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shadowColor: Colors.black.withOpacity(0.1),
       child: InkWell(
         onTap: () => _navigateToDetailScreen(computer),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.all(16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(12),
+              // Computer icon with gradient background
+              Hero(
+                tag: 'computer-${computer['id']}',
+                child: Container(
+                  width: 85,
+                  height: 85,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF003399), Color(0xFF4169E1)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF003399).withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.computer_rounded,
+                    size: 45,
+                    color: Colors.white,
+                  ),
                 ),
-                child: const Icon(Icons.computer, size: 40, color: Color(0xFF003399)),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -246,30 +312,55 @@ class _SalesListScreenState extends State<SalesListScreen> {
                           child: Text(
                             computer['model'] ?? 'Unknown Model',
                             style: const TextStyle(
-                              fontSize: 16,
+                              fontSize: 17,
                               fontWeight: FontWeight.bold,
+                              color: Color(0xFF1F2937),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        const SizedBox(width: 8),
+                        // Enhanced status badge with gradient
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: isAvailable ? Colors.green[50] : Colors.red[50],
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: isAvailable ? Colors.green : Colors.red,
-                              width: 1,
-                            ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
                           ),
-                          child: Text(
-                            status.toUpperCase(),
-                            style: TextStyle(
-                              color: isAvailable ? Colors.green[700] : Colors.red[700],
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: statusGradient,
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             ),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: statusColor.withOpacity(0.3),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                statusIcon,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                status.toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -277,27 +368,63 @@ class _SalesListScreenState extends State<SalesListScreen> {
                     const SizedBox(height: 8),
                     Text(
                       computer['specs'] ?? 'No specs',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
+                        height: 1.4,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          currencyFormat.format(priceValue),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF003399),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF003399).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            currencyFormat.format(priceValue),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF003399),
+                            ),
                           ),
                         ),
-                        Text(
-                          'Qty: ${computer['quantity'] ?? 0}',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.inventory_2_outlined,
+                                size: 16,
+                                color: Colors.grey[700],
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${computer['quantity'] ?? 0}',
+                                style: TextStyle(
+                                  color: Colors.grey[700],
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],

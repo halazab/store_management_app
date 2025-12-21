@@ -17,11 +17,6 @@ dependencies:
   app_links: ^6.3.2
   firebase_core: ^4.2.0
   webview_flutter: ^4.4.2
-  firebase_auth: ^6.1.1
-  google_sign_in: ^7.2.0
-  fluttertoast: ^9.0.0
-  cloud_firestore: ^6.0.3
-  cloud_functions: ^6.0.3
 
 dev_dependencies:
   flutter_test:
@@ -34,11 +29,12 @@ flutter_launcher_icons:
   ios: true
   web:
     generate: true
-    image_path: "assets/icon.png"
-  image_path: "assets/icon.png"
+    image_path: "assets/app_icon.png"
+  image_path: "assets/app_icon.png"
   min_sdk_android: 21 
 
 flutter:
   uses-material-design: true
   assets:
     - assets/chapa_logo.png
+    - assets/app_icon.png

@@ -42,9 +42,10 @@ def get_site_settings():
     return {
         'chapa_secret_key': site_settings.chapa_secret_key or os.getenv('CHAPA_SECRET_KEY', settings.CHAPA_SECRET_KEY),
         'chapa_public_key': site_settings.chapa_public_key or os.getenv('CHAPA_PUBLIC_KEY', ''),
+        'backend_url': site_settings.backend_url or os.getenv('BACKEND_URL', 'http://127.0.0.1:8000'),
         'frontend_url': site_settings.frontend_url or os.getenv('FRONTEND_URL', 'http://localhost:53841'),
-        'backend_url': os.getenv('BACKEND_URL', 'http://127.0.0.1:8000'),
     }
+
 
 @csrf_exempt
 def payment_callback(request):

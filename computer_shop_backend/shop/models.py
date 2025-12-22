@@ -261,12 +261,19 @@ class SiteSettings(models.Model):
         null=True,
         help_text="Chapa Public Key (optional, for frontend integration)"
     )
+    backend_url = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="Backend URL for payment callbacks (e.g., https://store-management-56xj.onrender.com or http://127.0.0.1:8000 for local dev). Used for Chapa callback and return URLs."
+    )
     frontend_url = models.URLField(
         max_length=500,
         blank=True,
         null=True,
         help_text="Frontend URL where users are redirected after payment (e.g., https://yourapp.com or http://localhost:53841 for local dev)"
     )
+
     
     class Meta:
         verbose_name = "Site Settings"

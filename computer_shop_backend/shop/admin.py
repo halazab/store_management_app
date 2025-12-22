@@ -98,11 +98,16 @@ class SiteSettingsAdmin(admin.ModelAdmin):
             'fields': ('chapa_secret_key', 'chapa_public_key'),
             'description': 'Configure Chapa API keys for payment processing. If left empty, environment variables will be used as fallbacks.'
         }),
+        ('Backend Configuration', {
+            'fields': ('backend_url',),
+            'description': 'Set your hosted backend URL (e.g., https://store-management-56xj.onrender.com). This is used for payment callback and return URLs. Falls back to BACKEND_URL environment variable if not set.'
+        }),
         ('Frontend Configuration', {
             'fields': ('frontend_url',),
             'description': 'Set the URL where users are redirected after payment completion (e.g., https://yourapp.com or http://localhost:53841 for local development).'
         }),
     )
+
     
     def has_add_permission(self, request):
         # Only allow adding if no instance exists

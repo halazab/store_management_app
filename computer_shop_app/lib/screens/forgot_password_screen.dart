@@ -29,7 +29,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse("https://computer-shop-backend-4uyg.onrender.com/api/send-reset-otp/"),
+        Uri.parse("https://store-management-56xj.onrender.com/api/send-reset-otp/"),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({"email": email}),
       );

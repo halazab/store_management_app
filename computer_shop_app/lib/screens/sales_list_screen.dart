@@ -151,65 +151,66 @@ class _SalesListScreenState extends State<SalesListScreen> {
               onRefresh: () async => _refreshSales(),
               color: const Color(0xFF003399),
               child: FutureBuilder<List<Map<String, dynamic>>>(
-          future: _salesFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
+                future: _salesFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-            if (snapshot.hasError) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Error loading sales',
-                      style: TextStyle(color: Colors.grey[800], fontSize: 16),
-                    ),
-                    TextButton(
-                      onPressed: _refreshSales,
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              );
-            }
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Error loading sales',
+                            style: TextStyle(color: Colors.grey[800], fontSize: 16),
+                          ),
+                          TextButton(
+                            onPressed: _refreshSales,
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
 
-            final sales = snapshot.data ?? [];
+                  final sales = snapshot.data ?? [];
 
-            if (sales.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey[400]),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No computers for sale yet',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 18),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Tap details to add your first computer',
-                      style: TextStyle(color: Colors.grey[500], fontSize: 14),
-                    ),
-                  ],
-                ),
-              );
-            }
+                  if (sales.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No computers for sale yet',
+                            style: TextStyle(color: Colors.grey[600], fontSize: 18),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Tap + to add your first computer',
+                            style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
 
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: sales.length,
-              itemBuilder: (context, index) {
-                final computer = sales[index];
-                return _buildComputerCard(computer);
-              },
-            );
-          },
-        ),
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: sales.length,
+                    itemBuilder: (context, index) {
+                      final computer = sales[index];
+                      return _buildComputerCard(computer);
+                    },
+                  );
+                },
+              ),
+            ),
           ),
         ],
       ),

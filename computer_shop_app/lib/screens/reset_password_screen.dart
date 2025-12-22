@@ -41,7 +41,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse("https://computer-shop-backend-4uyg.onrender.com/api/verify-reset-otp/"),
+        Uri.parse("https://store-management-56xj.onrender.com/api/verify-reset-otp/"),
         headers: {"Content-Type": "application/json"},
         body: json.encode({
           "email": widget.email,

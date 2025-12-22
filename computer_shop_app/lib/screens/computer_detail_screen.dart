@@ -136,24 +136,56 @@ class _ComputerDetailScreenState extends State<ComputerDetailScreen> {
   Future<void> _sendToMaintenance(BuildContext context) async {
     final result = await showDialog<Map<String, String>>(
       context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
       builder: (ctx) {
         final _customerCtrl = TextEditingController();
         final _issueCtrl = TextEditingController();
         final _notesCtrl = TextEditingController();
         return AlertDialog(
-          title: const Text('Send to Maintenance'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text(
+            'Send to Maintenance',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           content: SingleChildScrollView(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: _customerCtrl, decoration: const InputDecoration(labelText: 'Customer name')),
-                TextField(controller: _issueCtrl, decoration: const InputDecoration(labelText: 'Reported issue')),
-                TextField(controller: _notesCtrl, decoration: const InputDecoration(labelText: 'Notes (optional)')),
+                TextField(
+                  controller: _customerCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Customer name',
+                    prefixIcon: Icon(Icons.person),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _issueCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Reported issue',
+                    prefixIcon: Icon(Icons.report_problem),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _notesCtrl,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Notes (optional)',
+                    prefixIcon: Icon(Icons.note),
+                    alignLabelWithHint: true,
+                  ),
+                ),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, {}), child: const Text('Cancel')),
             TextButton(
+              onPressed: () => Navigator.pop(ctx, {}),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
               onPressed: () => Navigator.pop(ctx, {
                 'customer_name': _customerCtrl.text,
                 'reported_issue': _issueCtrl.text,

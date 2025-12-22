@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import MaintenanceJob, ComputerSale, Coupon, Subscription, PasswordResetOTP, EmailVerificationOTP, SubscriptionPricing
+from .models import MaintenanceJob, ComputerSale, Coupon, Subscription, PasswordResetOTP, EmailVerificationOTP, SubscriptionPricing, SiteSettings
 
 @admin.register(MaintenanceJob)
 class MaintenanceJobAdmin(admin.ModelAdmin):
@@ -88,5 +88,30 @@ class SubscriptionPricingAdmin(admin.ModelAdmin):
     
     readonly_fields = ('created_at', 'updated_at')
 
+@admin.register(SiteSettings)
+class SiteSettingsAdmin(admin.ModelAdmin):
+    """
+    Custom admin for SiteSettings singleton model.
+    """
+    fieldsets = (
+        ('Chapa Payment Settings', {
+            'fields': ('chapa_secret_key', 'chapa_public_key'),
+            'description': 'Configure Chapa API keys for payment processing. If left empty, environment variables will be used as fallbacks.'
+        }),
+        ('Frontend Configuration', {
+            'fields': ('frontend_url',),
+            'description': 'Set the URL where users are redirected after payment completion (e.g., https://yourapp.com or http://localhost:53841 for local development).'
+        }),
+    )
+    
+    def has_add_permission(self, request):
+        # Only allow adding if no instance exists
+        return not SiteSettings.objects.exists()
+    
+    def has_delete_permission(self, request, obj=None):
+        # Prevent deletion
+        return False
+
 admin.site.register(PasswordResetOTP)
 admin.site.register(EmailVerificationOTP)
+

@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from rest_framework import viewsets
-from .models import MaintenanceJob, ComputerSale, PasswordResetOTP, SoldItem, EmailVerificationOTP, Coupon, Subscription
+from .models import MaintenanceJob, ComputerSale, PasswordResetOTP, SoldItem, EmailVerificationOTP, Coupon, Subscription, SiteSettings
 from .serializers import MaintenanceJobSerializer, ComputerSaleSerializer, SoldItemSerializer
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
@@ -36,6 +36,16 @@ from .models import PasswordResetOTP
 
 CHAPA_SECRET_KEY = settings.CHAPA_SECRET_KEY
 
+def get_site_settings():
+    """Helper function to get site settings with environment variable fallbacks"""
+    site_settings = SiteSettings.load()
+    return {
+        'chapa_secret_key': site_settings.chapa_secret_key or os.getenv('CHAPA_SECRET_KEY', settings.CHAPA_SECRET_KEY),
+        'chapa_public_key': site_settings.chapa_public_key or os.getenv('CHAPA_PUBLIC_KEY', ''),
+        'frontend_url': site_settings.frontend_url or os.getenv('FRONTEND_URL', 'http://localhost:53841'),
+        'backend_url': os.getenv('BACKEND_URL', 'http://127.0.0.1:8000'),
+    }
+
 @csrf_exempt
 def payment_callback(request):
     """
@@ -53,8 +63,9 @@ def payment_callback(request):
         print(f"🔔 Payment callback received for tx_ref: {tx_ref}")
         
         # Verify payment with Chapa
+        site_config = get_site_settings()
         headers = {
-            "Authorization": f"Bearer {settings.CHAPA_SECRET_KEY}",
+            "Authorization": f"Bearer {site_config['chapa_secret_key']}",
         }
         
         verify_url = f"https://api.chapa.co/v1/transaction/verify/{tx_ref}"
@@ -128,8 +139,9 @@ def payment_success(request):
     if tx_ref:
         try:
             # Verify and activate subscription
+            site_config = get_site_settings()
             headers = {
-                "Authorization": f"Bearer {settings.CHAPA_SECRET_KEY}",
+                "Authorization": f"Bearer {site_config['chapa_secret_key']}",
             }
             
             verify_url = f"https://api.chapa.co/v1/transaction/verify/{tx_ref}"
@@ -170,7 +182,9 @@ def payment_success(request):
             traceback.print_exc()
     
     # For web (Chrome), redirect to the app's payment-success route
-    frontend_url = request.GET.get('frontend_url')
+    # Use frontend_url from request first, then from site settings, then localhost
+    site_config = get_site_settings()
+    frontend_url = request.GET.get('frontend_url') or site_config['frontend_url']
     if frontend_url:
         # Use provided frontend URL (e.g., http://localhost:53841/#/)
         # Ensure it ends with / so we can append payment-success
@@ -263,10 +277,16 @@ def check_subscription(request):
 
 
 def create_chapa_payment(user, amount, tx_ref, frontend_url=None):
+    site_config = get_site_settings()
     headers = {
-        "Authorization": f"Bearer {CHAPA_SECRET_KEY}",
+        "Authorization": f"Bearer {site_config['chapa_secret_key']}",
         "Content-Type": "application/json",
     }
+    
+    # Use frontend_url from parameter, or from site settings
+    if not frontend_url:
+        frontend_url = site_config['frontend_url']
+    
     data = {
         "amount": str(amount),
         "currency": "ETB",
@@ -275,8 +295,8 @@ def create_chapa_payment(user, amount, tx_ref, frontend_url=None):
         "last_name": user.last_name or "",
         "phone_number": user.profile.phone_number if hasattr(user, 'profile') and user.profile.phone_number else "+251912345678",
         "tx_ref": tx_ref,
-        "callback_url": f"{os.getenv('BACKEND_URL', 'http://127.0.0.1:8000')}/api/payment-callback/",
-        "return_url": f"{os.getenv('BACKEND_URL', 'http://127.0.0.1:8000')}/api/payment-success/?tx_ref={tx_ref}" + (f"&frontend_url={frontend_url}" if frontend_url else ""), 
+        "callback_url": f"{site_config['backend_url']}/api/payment-callback/",
+        "return_url": f"{site_config['backend_url']}/api/payment-success/?tx_ref={tx_ref}" + (f"&frontend_url={frontend_url}" if frontend_url else ""), 
     }
     try:
         r = requests.post(

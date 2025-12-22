@@ -8,6 +8,8 @@ import 'screens/auth/login_screen.dart';
 import 'screens/auth/signup_screen.dart';
 import 'screens/auth/email_verification_screen.dart';
 import 'screens/home/dashboard_screen.dart';
+import 'screens/subscription/subscription_screen.dart';
+import 'widgets/subscription_guard.dart';
 
 void main() {
   runApp(const MyApp());
@@ -40,8 +42,14 @@ class MyApp extends StatelessWidget {
                 builder: (_) => const EmailVerificationScreen(),
                 settings: settings,
               );
+            case '/subscription':
+              return MaterialPageRoute(builder: (_) => const SubscriptionScreen());
             case '/dashboard':
-              return MaterialPageRoute(builder: (_) => const DashboardScreen());
+              return MaterialPageRoute(
+                builder: (_) => const SubscriptionGuard(
+                  child: DashboardScreen(),
+                ),
+              );
             case '/add-computer':
             case '/add-maintenance':
               // Temporary: Navigate back to dashboard

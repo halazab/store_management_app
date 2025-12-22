@@ -151,4 +151,115 @@ class AuthService {
     }
     return false;
   }
+  
+  // Subscription Methods
+  
+  /// Get subscription pricing options from backend
+  Future<List<Map<String, dynamic>>> getSubscriptionPricing() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/subscription-pricing/'),
+        headers: ApiConfig.jsonHeaders,
+      );
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((item) => item as Map<String, dynamic>).toList();
+      }
+    } catch (e) {
+      print("Error fetching subscription pricing: $e");
+    }
+    return [];
+  }
+  
+  /// Check if user has active subscription
+  Future<bool> checkSubscription() async {
+    try {
+      final token = await getToken();
+      if (token == null) return false;
+      
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/check-subscription/'),
+        headers: {
+          ...ApiConfig.jsonHeaders,
+          'Authorization': 'Bearer $token',
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['is_paid'] == true;
+      }
+    } catch (e) {
+      print("Error checking subscription: $e");
+    }
+    return false;
+  }
+  
+  /// Create Chapa payment
+  Future<String?> createChapaPayment({
+    required int amount,
+    required String email,
+    required String txRef,
+    String? couponCode,
+  }) async {
+    try {
+      final token = await getToken();
+      if (token == null) return null;
+      
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/create-payment/'),
+        headers: {
+          ...ApiConfig.jsonHeaders,
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'amount': amount,
+          'email': email,
+          'tx_ref': txRef,
+          if (couponCode != null) 'coupon_code': couponCode,
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['payment_url'];
+      }
+    } catch (e) {
+      print("Error creating payment: $e");
+    }
+    return null;
+  }
+  
+  /// Validate coupon code
+  Future<Map<String, dynamic>> validateCoupon(String couponCode, int amount) async {
+    try {
+      final token = await getToken();
+      if (token == null) {
+        return {'valid': false, 'error': 'Not authenticated'};
+      }
+      
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/validate-coupon/'),
+        headers: {
+          ...ApiConfig.jsonHeaders,
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'coupon_code': couponCode,
+          'amount': amount,
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        final error = jsonDecode(response.body);
+        return {'valid': false, 'error': error['error'] ?? 'Invalid coupon'};
+      }
+    } catch (e) {
+      print("Error validating coupon: $e");
+      return {'valid': false, 'error': 'Network error'};
+    }
+  }
 }

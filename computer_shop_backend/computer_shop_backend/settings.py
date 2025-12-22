@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 from datetime import timedelta
-
+import os
 SECRET_KEY = 'django-insecure-xj951=^$9h5&obv-#1g7q#^1!4me5s1*g4hbvsy^ohd6)$nha8'
 CHAPA_SECRET_KEY = "CHASECK_TEST-nHCc5HHEQ15Wl7LhLRBkhGBDtL93hTEV"
 

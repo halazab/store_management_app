@@ -492,15 +492,6 @@ def custom_login(request):
     if not user.check_password(password):
         return JsonResponse({"error": "Invalid credentials"}, status=401)
     
-    # Check if user is verified
-    if not user.is_active:
-        return JsonResponse({
-            "error": "Email not verified",
-            "email_not_verified": True,
-            "email": user.email,
-            "message": "Please verify your email before logging in"
-        }, status=403)
-    
     # Generate JWT tokens
     from rest_framework_simplejwt.tokens import RefreshToken
     refresh = RefreshToken.for_user(user)
@@ -534,48 +525,26 @@ def signup(request):
         if User.objects.filter(email=email).exists():
             return JsonResponse({"error": "Email already exists"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create user as inactive until email is verified
+        # Create user and activate immediately (no email verification required)
         user = User.objects.create_user(
             username=username,
             password=password,
             email=email,
-            is_active=False  # Require email verification
+            is_active=True  # User is active immediately
         )
-
-        # Generate OTP for email verification
-        otp = str(random.randint(1000, 9999))
-        expires = timezone.now() + timedelta(minutes=10)
         
-        print(f"DEBUG (signup): Generated verification OTP: {otp} for email: {email}")
-        
-        EmailVerificationOTP.objects.create(
-            user=user,
-            otp=otp,
-            expires_at=expires,
-            verified=False
-        )
-
-        # Send verification email
-        try:
-            send_mail(
-                "Verify Your Email - Computer Shop App",
-                f"Welcome {username}!\n\nYour email verification code is: {otp}\n\nThis code will expire in 10 minutes.\n\nIf you didn't create this account, please ignore this email.",
-                "storemanagingapp@gmail.com",
-                [email],
-                fail_silently=True,  # Don't crash on email failure
-            )
-            print(f"DEBUG (signup): Email sent to {email}")
-        except Exception as e:
-            print(f"WARNING (signup): Email failed: {str(e)}")
+        print(f"DEBUG (signup): User {username} created successfully with email {email}")
 
         return JsonResponse({
-            "message": "Signup successful. Please check your email for verification code.",
+            "message": "Signup successful! You can now log in.",
+            "username": username,
             "email": email
         }, status=status.HTTP_201_CREATED)
 
     except Exception as e:
         print(f"Signup error: {str(e)}")
         return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(["POST"])
 def login(request):

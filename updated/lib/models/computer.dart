@@ -2,6 +2,7 @@ enum ComputerStatus {
   available,
   sold,
   maintenance,
+  reserved,  // Added missing status
 }
 
 class Computer {
@@ -46,7 +47,7 @@ class Computer {
       'specs': specs,
       'price': price,
       'quantity': quantity,
-      'status': status.name,
+      'status': _statusToBackend(status),  // Fixed: Send capitalized status
       if (saleDate != null) 'sale_date': saleDate!.toIso8601String(),
     };
   }
@@ -57,8 +58,24 @@ class Computer {
         return ComputerStatus.sold;
       case 'maintenance':
         return ComputerStatus.maintenance;
+      case 'reserved':
+        return ComputerStatus.reserved;
       default:
         return ComputerStatus.available;
+    }
+  }
+  
+  // Convert status enum to backend format (capitalized)
+  static String _statusToBackend(ComputerStatus status) {
+    switch (status) {
+      case ComputerStatus.available:
+        return 'Available';
+      case ComputerStatus.sold:
+        return 'Sold';
+      case ComputerStatus.maintenance:
+        return 'Maintenance';
+      case ComputerStatus.reserved:
+        return 'Reserved';
     }
   }
   
@@ -70,6 +87,8 @@ class Computer {
         return 'Sold';
       case ComputerStatus.maintenance:
         return 'Maintenance';
+      case ComputerStatus.reserved:
+        return 'Reserved';
     }
   }
 }

@@ -135,6 +135,11 @@ class ComputersListScreen extends StatelessWidget {
         statusGradient = AppTheme.warningGradient;
         statusIcon = Icons.build_circle;
         break;
+      case ComputerStatus.reserved:
+        statusColor = AppTheme.primaryBlue;
+        statusGradient = AppTheme.primaryGradient;
+        statusIcon = Icons.bookmark;
+        break;
     }
 
     return Card(

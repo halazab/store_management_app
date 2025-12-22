@@ -233,6 +233,7 @@ class MaintenanceListScreen extends StatelessWidget {
         ),
       ),
     );
+  }
 
   Widget _buildMaintenanceCard(BuildContext context, MaintenanceJob job) {
     Color statusColor;

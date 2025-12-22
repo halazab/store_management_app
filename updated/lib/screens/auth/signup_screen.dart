@@ -38,16 +38,35 @@ class _SignupScreenState extends State<SignupScreen> {
       _passwordController.text,
     );
 
-    setState(() => _isLoading = false);
-
     if (!mounted) return;
 
     if (result['success'] == true) {
-      Navigator.of(context).pushReplacementNamed(
-        '/verify-email',
-        arguments: {'email': result['email']},
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Account created successfully! Logging you in...'),
+          backgroundColor: Colors.green,
+        ),
       );
+
+      // Automatically login after successful signup
+      final loginResult = await provider.login(
+        _usernameController.text.trim(),
+        _passwordController.text,
+      );
+
+      setState(() => _isLoading = false);
+
+      if (loginResult['success'] == true) {
+        // Navigate to dashboard/home page
+        Navigator.of(context).pushReplacementNamed('/dashboard');
+      } else {
+        // If auto-login fails, navigate to login screen
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
     } else {
+      setState(() => _isLoading = false);
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result['message'] ?? 'Signup failed'),

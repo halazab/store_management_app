@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'config/theme.dart';
 import 'providers/app_provider.dart';
+import 'services/navigation_service.dart';
 import 'screens/auth/splash_screen.dart';
 import 'screens/auth/welcome_screen.dart';
 import 'screens/auth/login_screen.dart';
@@ -26,6 +27,7 @@ class MyApp extends StatelessWidget {
         title: 'Computer Store',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
+        navigatorKey: NavigationService().navigatorKey,
         initialRoute: '/',
         onGenerateRoute: (settings) {
           switch (settings.name) {

@@ -492,6 +492,15 @@ def custom_login(request):
     if not user.check_password(password):
         return JsonResponse({"error": "Invalid credentials"}, status=401)
     
+    # Check if user has verified their email
+    if not user.is_active:
+        return JsonResponse({
+            "error": "Email not verified",
+            "email_not_verified": True,
+            "email": user.email,
+            "message": "Please verify your email before logging in. Check your inbox for the verification code."
+        }, status=403)
+    
     # Generate JWT tokens
     from rest_framework_simplejwt.tokens import RefreshToken
     refresh = RefreshToken.for_user(user)
@@ -525,25 +534,54 @@ def signup(request):
         if User.objects.filter(email=email).exists():
             return JsonResponse({"error": "Email already exists"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create user and activate immediately (no email verification required)
+        # Create user as inactive until email is verified
         user = User.objects.create_user(
             username=username,
             password=password,
             email=email,
-            is_active=True  # User is active immediately
+            is_active=False  # Require email verification
         )
-        
-        print(f"DEBUG (signup): User {username} created successfully with email {email}")
 
+        # Generate OTP for email verification
+        otp = str(random.randint(1000, 9999))
+        expires = timezone.now() + timedelta(minutes=10)
+        
+        print(f"DEBUG (signup): Generated verification OTP: {otp} for email: {email}")
+        
+        # Save OTP to database
+        EmailVerificationOTP.objects.create(
+            user=user,
+            otp=otp,
+            expires_at=expires,
+            verified=False
+        )
+
+        # Send verification email (non-blocking, won't crash on failure)
+        try:
+            send_mail(
+                subject="Verify Your Email - Computer Shop App",
+                message=f"Welcome {username}!\n\nYour email verification code is: {otp}\n\nThis code will expire in 10 minutes.\n\nIf you didn't create this account, please ignore this email.",
+                from_email="storemanagingapp@gmail.com",
+                recipient_list=[email],
+                fail_silently=True,  # Don't crash if email fails
+            )
+            print(f"DEBUG (signup): Verification email sent to {email}")
+        except Exception as e:
+            print(f"WARNING (signup): Email sending failed: {str(e)}")
+            # Continue anyway - user can still verify with OTP from logs/database
+        
         return JsonResponse({
-            "message": "Signup successful! You can now log in.",
-            "username": username,
-            "email": email
+            "message": "Signup successful! Please check your email for verification code.",
+            "email": email,
+            "requires_verification": True
         }, status=status.HTTP_201_CREATED)
 
     except Exception as e:
-        print(f"Signup error: {str(e)}")
+        print(f"ERROR (signup): {str(e)}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 @api_view(["POST"])

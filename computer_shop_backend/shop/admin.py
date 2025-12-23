@@ -1,5 +1,5 @@
-ffrom .models import MaintenanceJob, ComputerSale, Coupon, Subscription, PasswordResetOTP, EmailVerificationOTP, SubscriptionPricingom django.contrib import admin
-from .models import MaintenanceJob, ComputerSale, Coupon, Subscription, PasswordResetOTP, EmailVerificationOTP, SubscriptionPricing, SiteSettings
+from django.contrib import admin
+from .models import MaintenanceJob, ComputerSale, Coupon, Subscription, PasswordResetOTP, EmailVerificationOTP, SubscriptionPricing
 
 @admin.register(MaintenanceJob)
 class MaintenanceJobAdmin(admin.ModelAdmin):
